@@ -1,15 +1,23 @@
 import { CustomAuthorizerEvent, CustomAuthorizerResult, CustomAuthorizerHandler } from 'aws-lambda';
 import 'source-map-support/register';
+import * as AWS from 'aws-sdk';
+
+const secretId = process.env.AUTH_0_SECRET_ID;
+const secretField = process.env.AUTH_0_SECRET_FIELD;
+
+const client = new AWS.SecretsManager();
+
+// Cache secret if a Lambda instance is reused
+let cachedSecret: string;
 
 import { verify } from 'jsonwebtoken'
 import { JwtToken } from '../../auth/jwtToken'
 
-const auth0Secret = process.env.AUTH_0_SECRET
 
 export const handler: CustomAuthorizerHandler = async (event: CustomAuthorizerEvent): Promise<CustomAuthorizerResult> => {
 
     try{
-        const decodedToken = verifyToken(event.authorizationToken);
+        const decodedToken = await verifyToken(event.authorizationToken);
         console.log('User was authorized');
         
         return {
@@ -46,7 +54,7 @@ export const handler: CustomAuthorizerHandler = async (event: CustomAuthorizerEv
     }
 }
 
-function verifyToken (authHeader: string): JwtToken{
+async function verifyToken (authHeader: string): Promise<JwtToken>{
     if(!authHeader){
         throw new Error('No authorization header');
     }
@@ -58,7 +66,20 @@ function verifyToken (authHeader: string): JwtToken{
     const split = authHeader.split(' ');
     const token = split[1];
 
-    return verify(token, auth0Secret) as JwtToken;
+    const secretObject: any = await getSecret();
+    const secret = secretObject[secretField];
+
+    return verify(token, secret) as JwtToken;
 
 
+}
+
+async function getSecret(){
+    if(cachedSecret) return cachedSecret;
+
+    const data = await client
+    .getSecretValue({SecretId: secretId}).promise();
+
+    cachedSecret = data.SecretString;
+    return JSON.parse(cachedSecret);
 }

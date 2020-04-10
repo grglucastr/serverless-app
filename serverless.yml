@@ -62,7 +62,8 @@ provider:
     SIGNED_URL_EXPIRATION: 300
     REGION: ${self:provider.region}
     THUMBNAILS_S3_BUCKET: grglucastr-serverless-udagram-thumbnail-${self:provider.stage}
-    AUTH_0_SECRET: Uz3_mSi9AkxTZmyHlbmFgpTkDhH8lELX6oycDXuihOBqA2IiJktlPkr8tfiRAiUu
+    AUTH_0_SECRET_ID: AuthSecret-${self:provider.stage}
+    AUTH_0_SECRET_FIELD: auth0Secret
   
   iamRoleStatements:
     - 
@@ -98,6 +99,19 @@ provider:
         - dynamodb:PutItem
         - dynamodb:DeleteItem
       Resource: arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}
+
+    -
+      Effect: Allow
+      Action:
+        - secretsmanager:GetSecretValue
+      Resource: !Ref Auth0Secret
+    
+    -
+      Effect: Allow
+      Action:
+        - kms:Decrypt
+      Resource: !GetAtt KMSKey.Arn
+
 
 functions:
   Auth:
@@ -367,3 +381,39 @@ resources:
                 AWS: '*'
               Action: 'es:*'
               Resource: '*'
+    
+    KMSKey:
+      Type: AWS::KMS::Key
+      Properties:
+        Description: KMS key to encrypt Auth0 secret
+        KeyPolicy:
+          Version: '2012-10-17'
+          Id: key-default-1
+          Statement:
+            - 
+              Sid: Allow administration of the key
+              Effect: Allow
+              Principal:
+                AWS:
+                  Fn::Join:
+                    - ':'
+                    - 
+                      - 'arn:aws:iam:'
+                      - Ref: AWS::AccountId
+                      - 'root'
+              Action:
+                - 'kms:*'
+              Resource: '*'
+    
+    KMSKeyAlias:
+      Type: AWS::KMS::Alias
+      Properties:
+        AliasName: alias/auth0Key-${self:provider.stage}
+        TargetKeyId: !Ref KMSKey
+    
+    Auth0Secret:
+      Type: AWS::SecretsManager::Secret
+      Properties:
+        Name: ${self:provider.environment.AUTH_0_SECRET_ID}
+        Description: Auth0 secret
+        KmsKeyId: !Ref KMSKey
