@@ -62,6 +62,7 @@ provider:
     SIGNED_URL_EXPIRATION: 300
     REGION: ${self:provider.region}
     THUMBNAILS_S3_BUCKET: grglucastr-serverless-udagram-thumbnail-${self:provider.stage}
+    AUTH_0_SECRET: Uz3_mSi9AkxTZmyHlbmFgpTkDhH8lELX6oycDXuihOBqA2IiJktlPkr8tfiRAiUu
   
   iamRoleStatements:
     - 
