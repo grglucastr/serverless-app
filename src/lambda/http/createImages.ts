@@ -3,6 +3,9 @@ import 'source-map-support';
 import * as AWS from 'aws-sdk';
 import * as uuid from 'uuid';
 
+import * as middy from 'middy';
+import { cors } from 'middy/middlewares';
+
 const docClient = new AWS.DynamoDB.DocumentClient();
 const imagesTable = process.env.IMAGES_TABLE;
 const groupsTable = process.env.GROUPS_TABLE;
@@ -14,7 +17,7 @@ const s3 = new AWS.S3({
 })
 
 
-export const handler: APIGatewayProxyHandler = async(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const handler = middy(async(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     console.log("Posting new image data");
     const imageId = uuid.v4();
     const groupId = event.pathParameters.groupId;
@@ -26,9 +29,6 @@ export const handler: APIGatewayProxyHandler = async(event: APIGatewayProxyEvent
     if(!validGroup){
         return{
             statusCode: 404,
-            headers:{
-                'Access-Control-Allow-Origin':'*'
-            },
             body: JSON.stringify({error: 'Group not found'})
         }
     }
@@ -52,16 +52,13 @@ export const handler: APIGatewayProxyHandler = async(event: APIGatewayProxyEvent
 
     return {
         statusCode: 201,
-        headers:{
-            'Access-Control-Allow-Origin': '*'
-        },
         body: JSON.stringify({
             newImage,
             uploadUrl:url,
 
         })
     }
-}
+});
 
 async function groupExists(groupId: string) {
     const result = await docClient.get({
@@ -85,3 +82,7 @@ function getUploadUrl(imageId: string){
        Expires: parseInt(urlExpiration) 
     });
 }
+
+handler.use(cors({
+    credentials:true
+}))
