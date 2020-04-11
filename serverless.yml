@@ -56,6 +56,7 @@ plugins:
   - serverless-aws-documentation
   - serverless-dynamodb-local
   - serverless-offline
+  - serverless-plugin-canary-deployments
 
 provider:
   name: aws
@@ -102,11 +103,13 @@ provider:
         - s3:PutObject
         - s3:GetObejct
       Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
+
     -
       Effect: Allow
       Action:
         - s3:PutObject
       Resource: arn:aws:s3:::${self:provider.environment.THUMBNAILS_S3_BUCKET}/*
+
     -
       Effect: Allow
       Action:
@@ -126,6 +129,13 @@ provider:
       Action:
         - kms:Decrypt
       Resource: !GetAtt KMSKey.Arn
+    
+    - 
+      Effect: Allow
+      Action:
+        - codedeploy:*
+      Resource:
+        - '*'
 
 
 functions:
@@ -156,6 +166,9 @@ functions:
             description: Create a new group
             requestModels:
               'application/json': GroupRequest
+    deploymentSettings:
+      type: Linear10PercentEvery1Minute
+      alias: Live
   GetImages:
     handler: src/lambda/http/getImages.handler
     events:
