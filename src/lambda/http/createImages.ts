@@ -1,12 +1,15 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda';
 import 'source-map-support';
 import * as AWS from 'aws-sdk';
+import * as AWSXRay from 'aws-xray-sdk';
 import * as uuid from 'uuid';
 
 import * as middy from 'middy';
 import { cors } from 'middy/middlewares';
 
-const docClient = new AWS.DynamoDB.DocumentClient();
+const XAWS = AWSXRay.captureAWS(AWS);
+
+const docClient = new XAWS.DynamoDB.DocumentClient();
 const imagesTable = process.env.IMAGES_TABLE;
 const groupsTable = process.env.GROUPS_TABLE;
 const bucketName = process.env.IMAGES_S3_BUCKET;
